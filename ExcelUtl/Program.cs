@@ -27,10 +27,7 @@ namespace ExcelTest
         public DateTime TestDateTime { set; get; }
     }
 
-    public class RowAtt : Attribute
-    {
-    }
-
+   
     class Program
     {
         static void Main(string[] args)
