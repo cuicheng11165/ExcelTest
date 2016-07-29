@@ -4,19 +4,19 @@ namespace Spreadsheet.Serialization
 {
     public class TestEntity
     {
-        [SheetColumnTest("")]
+        [SheetColumnTest("Column1")]
         public string TestString { set; get; }
 
-        [SheetColumnTest("")]
+        [SheetColumnTest("Column2")]
         public int TestInt32 { set; get; }
 
-        [SheetColumnTest("")]
+        [SheetColumnTest("Column3")]
         public double TestDouble { set; get; }
 
-        [SheetColumnTest("")]
+        [SheetColumnTest("Column4")]
         public bool TestBoolean { set; get; }
 
-        [SheetColumnTest("")]
+        [SheetColumnTest("Column5")]
         public DateTime TestDateTime { set; get; }
     }
 }

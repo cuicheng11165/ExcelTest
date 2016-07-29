@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace Spreadsheet.Serialization
 {
@@ -68,6 +70,9 @@ namespace Spreadsheet.Serialization
             // Add a WorkbookPart to the document.
             var workbookpart = spreadsheet.AddWorkbookPart();
             workbookpart.Workbook = new Workbook();
+            var stylesPart = spreadsheet.WorkbookPart.AddNewPart<WorkbookStylesPart>();
+
+            CreateStyleSheet(stylesPart);
 
             // Add a WorksheetPart to the WorkbookPart.
             var worksheetPart = workbookpart.AddNewPart<WorksheetPart>();
@@ -91,7 +96,7 @@ namespace Spreadsheet.Serialization
             var cellIndex = 0;
             foreach (var entry in propertyInfoNameMapping)
             {
-                headerRow.AppendChild(CreateCellByElement(entry.Value, cellIndex++, entry.Value));
+                headerRow.AppendChild(CreateCellByElement(entry.Value, cellIndex++, headerRow.RowIndex));
             }
             sheetData.Append(headerRow);
 
@@ -103,14 +108,73 @@ namespace Spreadsheet.Serialization
             spreadsheet.Close();
         }
 
+        private static void CreateStyleSheet(WorkbookStylesPart stylesPart)
+        {
+            stylesPart.Stylesheet = new Stylesheet();
+            // blank font list
+            stylesPart.Stylesheet.Fonts = new DocumentFormat.OpenXml.Spreadsheet.Fonts();
+            stylesPart.Stylesheet.Fonts.Count = 1;
+            stylesPart.Stylesheet.Fonts.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Font());
+
+            // create fills
+            stylesPart.Stylesheet.Fills = new Fills();
+
+            //create a solid red fill
+            var solidRed = new PatternFill() { PatternType = PatternValues.Solid };
+            solidRed.ForegroundColor = new ForegroundColor { Rgb = HexBinaryValue.FromString("FFFF0000") }; // red fill
+            solidRed.BackgroundColor = new BackgroundColor { Indexed = 64 };
+
+            stylesPart.Stylesheet.Fills.AppendChild(new Fill { PatternFill = new PatternFill { PatternType = PatternValues.None } });
+            // required, reserved by Excel
+            stylesPart.Stylesheet.Fills.AppendChild(new Fill
+            {
+                PatternFill = new PatternFill { PatternType = PatternValues.Gray125 }
+            }); // required, reserved by Excel
+            stylesPart.Stylesheet.Fills.AppendChild(new Fill { PatternFill = solidRed });
+            stylesPart.Stylesheet.Fills.Count = 3;
+
+            //blank border list
+            stylesPart.Stylesheet.Borders = new Borders();
+            stylesPart.Stylesheet.Borders.Count = 1;
+            stylesPart.Stylesheet.Borders.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Border());
+
+            // blank cell format list
+            stylesPart.Stylesheet.CellStyleFormats = new CellStyleFormats();
+            stylesPart.Stylesheet.CellStyleFormats.Count = 1;
+            stylesPart.Stylesheet.CellStyleFormats.AppendChild(new CellFormat());
+
+            stylesPart.Stylesheet.NumberingFormats = new NumberingFormats();
+            stylesPart.Stylesheet.NumberingFormats.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.NumberingFormat()
+            {
+                NumberFormatId = 165,
+                FormatCode = @"yyyy/mm/dd h:mm:ss"
+            });
+            stylesPart.Stylesheet.NumberingFormats.Count = 1;
+
+            // cell format list
+            stylesPart.Stylesheet.CellFormats = new CellFormats();
+            stylesPart.Stylesheet.CellFormats.AppendChild(new CellFormat());
+            stylesPart.Stylesheet.CellFormats.AppendChild(new CellFormat
+            {
+                NumberFormatId = 165,
+                ApplyNumberFormat = new BooleanValue(true)
+            });
+            stylesPart.Stylesheet.CellFormats.Count = 2;
+
+            stylesPart.Stylesheet.Save();
+        }
+
+
         private Row CreateRowByCell(T element)
         {
             var row = new Row { RowIndex = rowIndex++ };
             var cellIndex = 0;
+
+
             foreach (var entry in propertyInfoNameMapping)
             {
                 var value = entry.Key.GetValue(element);
-                row.AppendChild(CreateCellByElement(value, cellIndex++, entry.Value));
+                row.AppendChild(CreateCellByElement(value, cellIndex++, row.RowIndex));
             }
             return row;
         }
@@ -153,13 +217,64 @@ namespace Spreadsheet.Serialization
             return properties;
         }
 
-        private Cell CreateCellByElement(object cellValue, int cellIndex, string headerName)
+        /// <summary>
+        /// 列名是个26进制的数
+        /// </summary>
+        /// <param name="cellIndex"></param>
+        /// <param name="rowIndex"></param>
+        /// <returns></returns>
+        private string CreateHeaderIndex(int cellIndex, uint rowIndex)
+        {
+            string result = string.Empty;
+
+            var current = cellIndex;
+            while (true)
+            {
+                var last = current % 26;
+                char lastChar = (char)('A' + last);
+                result = lastChar + result;
+                current /= 26;
+                if (current == 0)
+                {
+                    break;
+                }
+            }
+            return result + rowIndex;
+        }
+
+        private Cell CreateCellByElement(object cellValue, int cellIndex, uint rowIndex)
         {
             if (cellValue is Int32 || cellValue is float || cellValue is Int16 || cellValue is Int64 || cellValue is double)
             {
-                return new NumberCell(headerName, cellValue.ToString(), cellIndex);
+                return new Cell
+                {
+                    CellReference = CreateHeaderIndex(cellIndex, rowIndex),
+                    DataType = CellValues.Number,
+                    CellValue = new CellValue(cellValue.ToString())
+                };
             }
-            return new TextCell(headerName, cellValue == null ? string.Empty : cellValue.ToString(), cellIndex);
+            if (cellValue is DateTime)
+            {
+                return new Cell
+                {
+                    DataType = CellValues.Number,//DateTime 是以Number形式存的
+                    CellReference = CreateHeaderIndex(cellIndex, rowIndex),
+                    CellValue = new CellValue(DateTime.Now.ToOADate().ToString()),
+                    StyleIndex = 1
+                };
+            }
+            return new Cell
+            {
+                DataType = CellValues.InlineString,
+                CellReference = CreateHeaderIndex(cellIndex, rowIndex),
+                InlineString = new InlineString
+                {
+                    Text = new DocumentFormat.OpenXml.Spreadsheet.Text
+                    {
+                        Text = cellValue == null ? string.Empty : cellValue.ToString()
+                    }
+                }
+            };
         }
 
         public List<T> Deserialize(string inputFile)
@@ -279,7 +394,7 @@ namespace Spreadsheet.Serialization
                             }
                             else if (cell.DataType == CellValues.Boolean)
                             {
-                                //TODO 我们自己导出的Excel里不会有这种类型，自定义的excel需要支持则补全相应的逻辑
+                                SetValue(result, propertyInfo, cell.InnerText);
                             }
                             else if (cell.DataType == CellValues.Date)
                             {
@@ -318,11 +433,23 @@ namespace Spreadsheet.Serialization
                 }
                 else if (propertyInfo.PropertyType == typeof(bool))
                 {
-                    propertyInfo.SetValue(result, Convert.ToBoolean(value));
+                    var boolValue = string.Equals(value, "TRUE", StringComparison.OrdinalIgnoreCase) ||
+                                   string.Equals(value, "1", StringComparison.OrdinalIgnoreCase);
+
+                    propertyInfo.SetValue(result, boolValue);
                 }
                 else if (propertyInfo.PropertyType == typeof(DateTime))
                 {
-                    propertyInfo.SetValue(result, Convert.ToDateTime(value));
+                    double oaDateValue;
+                    if (double.TryParse(value, out oaDateValue))
+                    {
+                        var dateValue = DateTime.FromOADate(oaDateValue);
+                        propertyInfo.SetValue(result, dateValue);
+                    }
+                    else
+                    {
+                        propertyInfo.SetValue(result, Convert.ToDateTime(value));
+                    }
                 }
             }
             catch (Exception)

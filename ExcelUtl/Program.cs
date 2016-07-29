@@ -32,7 +32,7 @@ sadfhoi",
                 TestInt32 = 100,
                 TestDouble = 3.1415926,
                 TestBoolean = false,
-                TestDateTime = DateTime.MinValue
+                TestDateTime = DateTime.Now
             };
 
 
@@ -42,9 +42,35 @@ sadfhoi",
 
             serializer.Serialize("d:\\test2.xlsx", list);
 
-            var result = serializer.Deserialize("d:\\test2.xlsx");
+            var result1 = serializer.Deserialize("d:\\test2.xlsx");
+            var result = serializer.Deserialize("d:\\Test.xlsx");
+
+
 
         }
+
+        public static string ReadXml(string file)
+        {
+            using (SpreadsheetDocument document = SpreadsheetDocument.Open(file, false))
+            {
+                WorkbookPart workbookPart = document.WorkbookPart;
+
+                IEnumerable<Sheet> sheets = workbookPart.Workbook.Descendants<Sheet>();
+
+                if (sheets.Count() == 0)
+                {
+                    return null;
+                }
+
+                WorksheetPart worksheetPart = (WorksheetPart)workbookPart.GetPartById(sheets.First().Id);
+
+                var sheetData = worksheetPart.Worksheet.GetFirstChild<SheetData>();
+
+                return sheetData.OuterXml;
+            }
+        }
+
+
 
     }
 }
