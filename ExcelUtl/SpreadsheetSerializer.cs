@@ -28,6 +28,11 @@ namespace Spreadsheet.Serialization
     /// 
     /// var serializer = new SpreadsheetSerializer<Student, ExcelColumn>("ColumnName");
     /// serializer.Serialize("d:\\test2.xlsx", list);
+    /// 
+    /// serializer.ErrorNotify += (sender, convertArgs) =>
+    /// {
+    ///     Console.WriteLine("Convert Failed when convert {0} to {1} . Row {2} , Column {3}, Error Message {4}.", convertArgs.Value, convertArgs.BindingType, convertArgs.RowIndex, convertArgs.ColumnIndex, convertArgs.ErrorException);
+    /// };
     /// var result = serializer.Deserialize("d:\\test2.xlsx");
     /// 
     /// </summary>
@@ -110,19 +115,21 @@ namespace Spreadsheet.Serialization
 
         private static void CreateStyleSheet(WorkbookStylesPart stylesPart)
         {
-            stylesPart.Stylesheet = new Stylesheet();
+            stylesPart.Stylesheet = new Stylesheet { Fonts = new DocumentFormat.OpenXml.Spreadsheet.Fonts { Count = 1 } };
             // blank font list
-            stylesPart.Stylesheet.Fonts = new DocumentFormat.OpenXml.Spreadsheet.Fonts();
-            stylesPart.Stylesheet.Fonts.Count = 1;
             stylesPart.Stylesheet.Fonts.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Font());
 
             // create fills
             stylesPart.Stylesheet.Fills = new Fills();
 
             //create a solid red fill
-            var solidRed = new PatternFill() { PatternType = PatternValues.Solid };
-            solidRed.ForegroundColor = new ForegroundColor { Rgb = HexBinaryValue.FromString("FFFF0000") }; // red fill
-            solidRed.BackgroundColor = new BackgroundColor { Indexed = 64 };
+            var solidRed = new PatternFill
+            {
+                PatternType = PatternValues.Solid,
+                ForegroundColor = new ForegroundColor { Rgb = HexBinaryValue.FromString("FFFF0000") },
+                BackgroundColor = new BackgroundColor { Indexed = 64 }
+            };
+            // red fill
 
             stylesPart.Stylesheet.Fills.AppendChild(new Fill { PatternFill = new PatternFill { PatternType = PatternValues.None } });
             // required, reserved by Excel
@@ -134,13 +141,11 @@ namespace Spreadsheet.Serialization
             stylesPart.Stylesheet.Fills.Count = 3;
 
             //blank border list
-            stylesPart.Stylesheet.Borders = new Borders();
-            stylesPart.Stylesheet.Borders.Count = 1;
+            stylesPart.Stylesheet.Borders = new Borders { Count = 1 };
             stylesPart.Stylesheet.Borders.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Border());
 
             // blank cell format list
-            stylesPart.Stylesheet.CellStyleFormats = new CellStyleFormats();
-            stylesPart.Stylesheet.CellStyleFormats.Count = 1;
+            stylesPart.Stylesheet.CellStyleFormats = new CellStyleFormats { Count = 1 };
             stylesPart.Stylesheet.CellStyleFormats.AppendChild(new CellFormat());
 
             stylesPart.Stylesheet.NumberingFormats = new NumberingFormats();
@@ -382,19 +387,19 @@ namespace Spreadsheet.Serialization
                             var propertyInfo = properties[columName];
                             if (cell.DataType == null)
                             {
-                                SetValue(result, propertyInfo, cell.InnerText);
+                                SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
                             }
                             else if (cell.DataType == CellValues.InlineString)
                             {
-                                SetValue(result, propertyInfo, cell.InlineString.InnerText);
+                                SetValue(result, propertyInfo, cell.InlineString.InnerText, row.RowIndex, cellIndex);
                             }
                             else if (cell.DataType == CellValues.Number)
                             {
-                                SetValue(result, propertyInfo, cell.InnerText);
+                                SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
                             }
                             else if (cell.DataType == CellValues.Boolean)
                             {
-                                SetValue(result, propertyInfo, cell.InnerText);
+                                SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
                             }
                             else if (cell.DataType == CellValues.Date)
                             {
@@ -403,7 +408,7 @@ namespace Spreadsheet.Serialization
                             else if (cell.DataType == CellValues.SharedString)
                             {
                                 var stringValue = stringTable.ChildElements[Int32.Parse(cell.InnerText)].InnerText;
-                                SetValue(result, propertyInfo, stringValue);
+                                SetValue(result, propertyInfo, stringValue, row.RowIndex, cellIndex);
                             }
                         }
                     }
@@ -415,7 +420,7 @@ namespace Spreadsheet.Serialization
             return result;
         }
 
-        private void SetValue(T result, PropertyInfo propertyInfo, string value)
+        private void SetValue(T result, PropertyInfo propertyInfo, string value, uint curRowIndex, int cellIndex)
         {
             try
             {
@@ -452,8 +457,19 @@ namespace Spreadsheet.Serialization
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                if (ErrorNotify != null)
+                {
+                    ErrorNotify.Invoke(result, new SpreedSheetConvertArgs()
+                    {
+                        ColumnIndex = cellIndex + 1,
+                        RowIndex = curRowIndex,
+                        Value = value,
+                        BindingType = propertyInfo.PropertyType,
+                        ErrorException = e.ToString(),
+                    });
+                }
             }
         }
 
@@ -486,5 +502,21 @@ namespace Spreadsheet.Serialization
             }).ToList();
             return properties;
         }
+
+        public event EventHandler<SpreedSheetConvertArgs> ErrorNotify;
+
+    }
+
+    public class SpreedSheetConvertArgs : EventArgs
+    {
+        public uint RowIndex { set; get; }
+
+        public int ColumnIndex { set; get; }
+
+        public object Value { set; get; }
+
+        public Type BindingType { set; get; }
+
+        public string ErrorException { set; get; }
     }
 }

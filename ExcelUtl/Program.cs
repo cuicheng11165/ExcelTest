@@ -40,6 +40,11 @@ sadfhoi",
 
             var serializer = new SpreadsheetSerializer<TestEntity, SheetColumnTest>("ColumnName");
 
+            serializer.ErrorNotify += (sender, convertArgs) =>
+            {
+                Console.WriteLine("Convert Failed when convert {0} to {1} . Row {2} , Column {3}, Error Message {4}.", convertArgs.Value, convertArgs.BindingType, convertArgs.RowIndex, convertArgs.ColumnIndex, convertArgs.ErrorException);
+            };
+
             serializer.Serialize("d:\\test2.xlsx", list);
 
             var result1 = serializer.Deserialize("d:\\test2.xlsx");
