@@ -48,35 +48,9 @@ sadfhoi",
             serializer.Serialize("d:\\test2.xlsx", list);
 
             var result1 = serializer.Deserialize("d:\\test2.xlsx");
-            var result = serializer.Deserialize("d:\\Test.xlsx");
-
 
 
         }
-
-        public static string ReadXml(string file)
-        {
-            using (SpreadsheetDocument document = SpreadsheetDocument.Open(file, false))
-            {
-                WorkbookPart workbookPart = document.WorkbookPart;
-
-                IEnumerable<Sheet> sheets = workbookPart.Workbook.Descendants<Sheet>();
-
-                if (sheets.Count() == 0)
-                {
-                    return null;
-                }
-
-                WorksheetPart worksheetPart = (WorksheetPart)workbookPart.GetPartById(sheets.First().Id);
-
-                var sheetData = worksheetPart.Worksheet.GetFirstChild<SheetData>();
-
-                return sheetData.OuterXml;
-            }
-        }
-
-
-
     }
 }
 

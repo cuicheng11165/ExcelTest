@@ -19,4 +19,10 @@ namespace Spreadsheet.Serialization
         [SheetColumnTest("Column5")]
         public DateTime TestDateTime { set; get; }
     }
+
+    public class SheetColumnTest : Attribute
+    {
+        public SheetColumnTest(string columnName) { this.ColumnName = columnName; }
+        string ColumnName { get; set; }
+    }
 }
