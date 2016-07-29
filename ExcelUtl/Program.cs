@@ -38,7 +38,7 @@ sadfhoi",
 
             var list = new List<TestEntity>() { entity, entity1 };
 
-            var serializer = new SpreadsheetSerializer<TestEntity, SheetColumn>("ColumnName");
+            var serializer = new SpreadsheetSerializer<TestEntity, SheetColumnTest>("ColumnName");
 
             serializer.Serialize("d:\\test2.xlsx", list);
 

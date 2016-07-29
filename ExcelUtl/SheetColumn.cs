@@ -2,9 +2,9 @@ using System;
 
 namespace Spreadsheet.Serialization
 {
-    public class SheetColumn : Attribute
+    public class SheetColumnTest : Attribute
     {
-        public SheetColumn(string columnName) { this.ColumnName = columnName; }
-        public string ColumnName { get; set; }
+        public SheetColumnTest(string columnName) { this.ColumnName = columnName; }
+        string ColumnName { get; set; }
     }
 }

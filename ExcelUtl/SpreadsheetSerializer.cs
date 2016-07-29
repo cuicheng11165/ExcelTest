@@ -31,9 +31,12 @@ namespace Spreadsheet.Serialization
     /// </summary>
     /// <typeparam name="T">表示要序列化的Entity的类型,如上面的例子中T的类型为Student</typeparam>
     /// <typeparam name="TV">用来标识某个属性需要Import的标签类型，如上面的例子中TV的类型为ExcelColumn</typeparam>
-    public class SpreadsheetSerializer<T, TV> where TV : class
+    public class SpreadsheetSerializer<T, TV>
+        where TV : class
+        where T : new()
     {
         public string AttributeProperty { get; private set; }
+
 
         private Dictionary<PropertyInfo, string> propertyInfoNameMapping;
 
@@ -129,7 +132,7 @@ namespace Spreadsheet.Serialization
 
                     if (sheetColumnAttr != null)
                     {
-                        var attributePropertyInfo = typeof(TV).GetProperty(this.AttributeProperty);
+                        var attributePropertyInfo = typeof(TV).GetProperty(this.AttributeProperty, BindingFlags.Instance | BindingFlags.NonPublic);
                         columnHeader = (string)attributePropertyInfo.GetValue(sheetColumnAttr);
                         hasColumnAttribute = true;
                     }
@@ -340,7 +343,7 @@ namespace Spreadsheet.Serialization
                 }
                 var attribute = att as TV;
 
-                var propertyInfo = typeof(TV).GetProperty(this.AttributeProperty);
+                var propertyInfo = typeof(TV).GetProperty(this.AttributeProperty, BindingFlags.Instance | BindingFlags.NonPublic);
 
                 var value = propertyInfo.GetValue(attribute);
                 if (value == null || value.ToString() == "")
