@@ -374,47 +374,29 @@ namespace Spreadsheet.Serialization
             var result = Activator.CreateInstance<T>();
 
             for (int cellIndex = 0; cellIndex < row.ChildElements.Count; cellIndex++)
-            {//逐个列进行遍历
-                try
+            {
+                var cell = row.ChildElements[cellIndex] as Cell;
+                if (cell != null)
                 {
-                    var cell = row.ChildElements[cellIndex] as Cell;
-                    if (cell != null)
-                    {
-                        string columName = columnSlot[cellIndex];
+                    string columName = columnSlot[cellIndex];
 
-                        if (properties.ContainsKey(columName))
+                    if (properties.ContainsKey(columName))
+                    {
+                        var propertyInfo = properties[columName];
+                        if (cell.DataType == null || cell.DataType == CellValues.Number || cell.DataType == CellValues.Date || cell.DataType == CellValues.Boolean)
                         {
-                            var propertyInfo = properties[columName];
-                            if (cell.DataType == null)
-                            {
-                                SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
-                            }
-                            else if (cell.DataType == CellValues.InlineString)
-                            {
-                                SetValue(result, propertyInfo, cell.InlineString.InnerText, row.RowIndex, cellIndex);
-                            }
-                            else if (cell.DataType == CellValues.Number)
-                            {
-                                SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
-                            }
-                            else if (cell.DataType == CellValues.Boolean)
-                            {
-                                SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
-                            }
-                            else if (cell.DataType == CellValues.Date)
-                            {
-                                //TODO 我们自己导出的Excel里不会有这种类型，自定义的excel需要支持则补全相应的逻辑
-                            }
-                            else if (cell.DataType == CellValues.SharedString)
-                            {
-                                var stringValue = stringTable.ChildElements[Int32.Parse(cell.InnerText)].InnerText;
-                                SetValue(result, propertyInfo, stringValue, row.RowIndex, cellIndex);
-                            }
+                            SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
+                        }
+                        else if (cell.DataType == CellValues.InlineString)
+                        {
+                            SetValue(result, propertyInfo, cell.InlineString.InnerText, row.RowIndex, cellIndex);
+                        }
+                        else if (cell.DataType == CellValues.SharedString)
+                        {
+                            var stringValue = stringTable.ChildElements[Int32.Parse(cell.InnerText)].InnerText;
+                            SetValue(result, propertyInfo, stringValue, row.RowIndex, cellIndex);
                         }
                     }
-                }
-                catch (Exception)
-                {
                 }
             }
             return result;
