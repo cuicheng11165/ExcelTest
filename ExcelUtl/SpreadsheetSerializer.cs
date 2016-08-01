@@ -201,7 +201,7 @@ namespace Spreadsheet.Serialization
 
                     if (sheetColumnAttr != null)
                     {
-                        var attributePropertyInfo = typeof(TV).GetProperty(this.AttributeProperty, BindingFlags.Instance | BindingFlags.NonPublic);
+                        var attributePropertyInfo = typeof(TV).GetProperty(this.AttributeProperty, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                         columnHeader = (string)attributePropertyInfo.GetValue(sheetColumnAttr);
                         hasColumnAttribute = true;
                     }
@@ -468,7 +468,7 @@ namespace Spreadsheet.Serialization
                 }
                 var attribute = att as TV;
 
-                var propertyInfo = typeof(TV).GetProperty(this.AttributeProperty, BindingFlags.Instance | BindingFlags.NonPublic);
+                var propertyInfo = typeof(TV).GetProperty(this.AttributeProperty, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
 
                 var value = propertyInfo.GetValue(attribute);
                 if (value == null || value.ToString() == "")
