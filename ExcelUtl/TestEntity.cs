@@ -4,7 +4,7 @@ namespace Spreadsheet.Serialization
 {
     public class TestEntity
     {
-        [SheetColumnTest("Column1")]
+        [SheetColumnTest("Column1", true)]
         public string TestString { set; get; }
 
         [SheetColumnTest("Column2")]
@@ -23,6 +23,10 @@ namespace Spreadsheet.Serialization
     public class SheetColumnTest : Attribute
     {
         public SheetColumnTest(string columnName) { this.ColumnName = columnName; }
+        public SheetColumnTest(string columnName, bool hidden)
+            : this(columnName)
+        { this.Hidden = hidden; }
         string ColumnName { get; set; }
+        public bool Hidden { set; get; }
     }
 }

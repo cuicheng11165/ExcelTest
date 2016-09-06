@@ -43,7 +43,7 @@ namespace Spreadsheet.Serialization
         where T : new()
     {
         public string AttributeProperty { get; private set; }
-
+        public string HiddenProperty { get; private set; }
 
         private Dictionary<PropertyInfo, string> propertyInfoNameMapping;
 
@@ -56,6 +56,17 @@ namespace Spreadsheet.Serialization
         public SpreadsheetSerializer(string attributeProperty)
         {
             AttributeProperty = attributeProperty;
+
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="attributeProperty">用来标识ColumnName的属性名</param>
+        public SpreadsheetSerializer(string attributeProperty, string hiddenColumn)
+            : this(attributeProperty)
+        {
+            HiddenProperty = hiddenColumn;
         }
 
         public void Serialize(string outPutFilePath, IList<T> elements)
@@ -95,12 +106,18 @@ namespace Spreadsheet.Serialization
 
             var sheetData = worksheetPart.Worksheet.GetFirstChild<SheetData>();
 
+
+
             propertyInfoNameMapping = GetProperties();
 
             var headerRow = new Row { RowIndex = rowIndex++ };
             var cellIndex = 0;
             foreach (var entry in propertyInfoNameMapping)
             {
+                if (NeedHideColumn(entry.Key))
+                {
+                    HideColumn(worksheetPart, (uint)(cellIndex + 1));
+                }
                 headerRow.AppendChild(CreateCellByElement(entry.Value, cellIndex++, headerRow.RowIndex));
             }
             sheetData.Append(headerRow);
@@ -111,6 +128,37 @@ namespace Spreadsheet.Serialization
             workbookpart.Workbook.Save();
             worksheetPart.Worksheet.Save();
             spreadsheet.Close();
+        }
+
+        private bool NeedHideColumn(PropertyInfo propertyInfo)
+        {
+            var attributes = propertyInfo.GetCustomAttributes(typeof(TV), true);
+
+            bool needHide = false;
+            if (!string.IsNullOrEmpty(this.HiddenProperty))
+            {
+                foreach (var attr in attributes)
+                {
+                    var sheetColumnAttr = attr as TV;
+
+                    if (sheetColumnAttr != null)
+                    {
+                        var attributePropertyInfo = typeof(TV).GetProperty(this.HiddenProperty, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                        needHide = (bool)attributePropertyInfo.GetValue(sheetColumnAttr);
+                    }
+                }
+            }
+            return needHide;
+        }
+
+        private static void HideColumn(WorksheetPart worksheetPart, uint index)
+        {
+            Worksheet worksheet = worksheetPart.Worksheet;
+            var columns1 = new DocumentFormat.OpenXml.Spreadsheet.Columns();
+            var column1 = new DocumentFormat.OpenXml.Spreadsheet.Column() { Min = index, Max = index, Width = 0D, Hidden = true, CustomWidth = true };
+            columns1.Append(column1);
+
+            worksheet.InsertAfter(columns1, worksheet.SheetFormatProperties);
         }
 
         private static void CreateStyleSheet(WorkbookStylesPart stylesPart)
@@ -311,6 +359,8 @@ namespace Spreadsheet.Serialization
                 {
                     stringTable = workbookPart.SharedStringTablePart.SharedStringTable;
                 }
+
+                var re = worksheetPart.Worksheet.Descendants<DocumentFormat.OpenXml.Spreadsheet.Column>();
 
                 var properties = GetPropertyNameInfoMapping();
                 string[] columnSlot = null;

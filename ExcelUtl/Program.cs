@@ -38,7 +38,7 @@ sadfhoi",
 
             var list = new List<TestEntity>() { entity, entity1 };
 
-            var serializer = new SpreadsheetSerializer<TestEntity, SheetColumnTest>("ColumnName");
+            var serializer = new SpreadsheetSerializer<TestEntity, SheetColumnTest>("ColumnName", "Hidden");
 
             serializer.ErrorNotify += (sender, convertArgs) =>
             {
@@ -46,7 +46,6 @@ sadfhoi",
             };
 
             serializer.Serialize("d:\\test2.xlsx", list);
-
             var result1 = serializer.Deserialize("d:\\test2.xlsx");
 
 
