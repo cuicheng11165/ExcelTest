@@ -276,23 +276,50 @@ namespace Spreadsheet.Serialization
         /// <param name="cellIndex"></param>
         /// <param name="rowIndex"></param>
         /// <returns></returns>
-        private string CreateHeaderIndex(int cellIndex, uint rowIndex)
+        private static string CreateHeaderIndex(int cellIndex, uint rowIndex)
         {
             string result = string.Empty;
 
             var current = cellIndex;
+            bool isLast = true;
             while (true)
             {
                 var last = current % 26;
-                char lastChar = (char)('A' + last);
+
+                char lastChar = isLast ? (char)('A' + last) : (char)('A' + last - 1);
                 result = lastChar + result;
                 current /= 26;
                 if (current == 0)
                 {
                     break;
                 }
+                isLast = false;
             }
             return result + rowIndex;
+        }
+
+        private int ConvertCellIndexToInt(string value)
+        {
+            int realIndex = 0;
+
+            bool isLast = true;
+            var current = value.Length - 2;
+            int pos = 0;
+            do
+            {
+                if (isLast)
+                {
+                    realIndex += (value[current] - 'A');
+                    isLast = false;
+                }
+                else
+                {
+                    realIndex += (value[current] + 1 - 'A') * (int)Math.Pow(26, pos);
+                }
+                pos++;
+            } while (--current >= 0);
+
+            return realIndex;
         }
 
         private Cell CreateCellByElement(object cellValue, int cellIndex, uint rowIndex)
@@ -426,25 +453,27 @@ namespace Spreadsheet.Serialization
             for (int cellIndex = 0; cellIndex < row.ChildElements.Count; cellIndex++)
             {
                 var cell = row.ChildElements[cellIndex] as Cell;
+
                 if (cell != null)
                 {
-                    string columName = columnSlot[cellIndex];
+                    var realIndex = ConvertCellIndexToInt(cell.CellReference.InnerText);
+                    string columName = columnSlot[realIndex];
 
                     if (properties.ContainsKey(columName))
                     {
                         var propertyInfo = properties[columName];
                         if (cell.DataType == null || cell.DataType == CellValues.Number || cell.DataType == CellValues.Date || cell.DataType == CellValues.Boolean)
                         {
-                            SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, cellIndex);
+                            SetValue(result, propertyInfo, cell.InnerText, row.RowIndex, realIndex);
                         }
                         else if (cell.DataType == CellValues.InlineString)
                         {
-                            SetValue(result, propertyInfo, cell.InlineString.InnerText, row.RowIndex, cellIndex);
+                            SetValue(result, propertyInfo, cell.InlineString.InnerText, row.RowIndex, realIndex);
                         }
                         else if (cell.DataType == CellValues.SharedString)
                         {
                             var stringValue = stringTable.ChildElements[Int32.Parse(cell.InnerText)].InnerText;
-                            SetValue(result, propertyInfo, stringValue, row.RowIndex, cellIndex);
+                            SetValue(result, propertyInfo, stringValue, row.RowIndex, realIndex);
                         }
                     }
                 }
